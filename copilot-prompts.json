@@ -1,0 +1,142 @@
+{
+  "version": "1.0",
+  "createdAt": "2026-04-08T22:21:19.622Z",
+  "prompts": [
+    {
+      "id": "prompt-1775686879623",
+      "timestamp": "2026-04-08T22:21:19.623Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "Como criar um middleware de autenticação em Express?",
+      "context": "menu service"
+    },
+    {
+      "id": "prompt-1775698303441",
+      "timestamp": "2026-04-08T22:31:43.441764Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "Qual é a melhor forma de estruturar rotas em Express?",
+      "context": "orders service"
+    },
+    {
+      "id": "prompt-1775687541212",
+      "timestamp": "2026-04-08T22:32:21.212868Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "Como fazer cache eficiente com Redis?",
+      "context": "performance optimization"
+    },
+    {
+      "id": "prompt-1775687572427",
+      "timestamp": "2026-04-08T22:32:52.427565Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "Qual é a melhor prática para estruturar testes unitários?",
+      "context": "testing"
+    },
+    {
+      "id": "prompt-1775687699793",
+      "timestamp": "2026-04-08T22:34:59.793770Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "Como implementar paginação em uma API REST?",
+      "context": "orders api pagination"
+    },
+    {
+      "id": "prompt-1775770096507",
+      "timestamp": "2026-04-09T21:28:16.507390Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "teste de rodar automatico",
+      "context": "orders api testing"
+    },
+    {
+      "id": "prompt-1775770100413",
+      "timestamp": "2026-04-09T21:28:20.413252Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "teste de pedido",
+      "context": "orders service"
+    },
+    {
+      "id": "prompt-1775770101753",
+      "timestamp": "2026-04-09T21:28:21.753035Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "teste",
+      "context": "general testing"
+    },
+    {
+      "id": "prompt-1775770103211",
+      "timestamp": "2026-04-09T21:28:23.211889Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "logando",
+      "context": "prompt logging system"
+    },
+    {
+      "id": "prompt-1775770104512",
+      "timestamp": "2026-04-09T21:28:24.512Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "crie um copilot hook que seja chamado a cada prompt para logar",
+      "context": "copilot hooks automation"
+    },
+    {
+      "id": "prompt-17757710563N",
+      "timestamp": "2026-04-09T21:44:16.3NZ",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "teste enonet fix",
+      "context": "copilot"
+    },
+    {
+      "id": "prompt-17757713073N",
+      "timestamp": "2026-04-09T21:48:27.3NZ",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "teste outra vez",
+      "context": "manual hook test"
+    },
+    {
+      "id": "prompt-17758665543N",
+      "timestamp": "2026-04-11T00:15:54.3NZ",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "teste de log",
+      "context": "manual hook test"
+    },
+    {
+      "id": "prompt-17758667533N",
+      "timestamp": "2026-04-11T00:19:13.3NZ",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "test message",
+      "context": "copilot"
+    },
+    {
+      "id": "prompt-1775866869050",
+      "timestamp": "2026-04-11T00:21:09.066Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "teste após fix do macOS",
+      "context": "copilot"
+    },
+    {
+      "id": "prompt-1775866912116",
+      "timestamp": "2026-04-11T00:21:52.134Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "teste de prompt",
+      "context": "manual hook test"
+    },
+    {
+      "id": "prompt-1775867021375",
+      "timestamp": "2026-04-11T00:23:41.390Z",
+      "gitBranch": "main",
+      "gitUser": "José Pedro Schardosim Simão",
+      "promptText": "<ide_opened_file>The user opened the file /Users/schardosim/code/prompt-auto-log/.github/hooks/auto-log-prompts.json in the IDE. This may or may not be related to the current task.</ide_opened_file>\nupdate readme",
+      "context": "copilot"
+    }
+  ]
+}
