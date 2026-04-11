@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 $CLAUDE_PROJECT_DIR/ai_log/log_prompts.py",
+            "command": "bash $CLAUDE_PROJECT_DIR/ai_log/log_prompts.sh",
             "async": true
           }
         ]

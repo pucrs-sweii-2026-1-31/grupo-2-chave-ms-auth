@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 log_prompts.py",
+            "command": "bash log_prompts.sh",
             "async": true,
             "cwd": "ai_log"
           }

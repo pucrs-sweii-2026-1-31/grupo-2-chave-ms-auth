@@ -4,9 +4,10 @@ Ferramenta de logging automático de prompts de IA generativa no VSCode. A cada 
 
 Também pode servir como base para fluxos de outras IAs no editor, adaptando os eventos/hooks conforme a ferramenta utilizada.
 
-## Pré-requisito:
+## Pré-requisitos:
 
-- **Python 3** instalado e acessível via `python3` no terminal.
+- Bash
+- `jq`
 - Git com `user.name` e `user.email` configurados
 
 ## Como funciona
@@ -15,7 +16,7 @@ Os agentes de IA permitem configurar **hooks**: scripts que são executados auto
 
 Quando um prompt é enviado:
 
-1. O agente executa o script `ai_log/log_prompts.py`
+1. O agente executa o script `ai_log/log_prompts.sh`
 2. O script recebe o conteúdo do prompt via `stdin` (em formato JSON)
 3. Tags de contexto da IDE (como `<ide_opened_file>` e `<ide_selection>`) são removidas automaticamente, salvando apenas o texto digitado pelo usuário
 4. A entrada é salva no arquivo `prompt_log.json` com timestamp, branch e usuário git
