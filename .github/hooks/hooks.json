@@ -5,9 +5,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash log_prompts.sh",
+            "command": "PROMPT_LOG_SOURCE=codex bash log_prompts.sh",
             "async": true,
-            "cwd": "ai_log"
+            "cwd": ".ai_log"
           }
         ]
       }
