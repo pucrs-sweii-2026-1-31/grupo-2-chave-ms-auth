@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PROMPT_LOG_SOURCE=claude bash $CLAUDE_PROJECT_DIR/.ai_log/log_prompts.sh",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
+}

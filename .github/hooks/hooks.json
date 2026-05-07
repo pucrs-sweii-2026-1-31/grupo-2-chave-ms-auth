@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "PROMPT_LOG_SOURCE=codex bash log_prompts.sh",
+            "async": true,
+            "cwd": ".ai_log"
+          }
+        ]
+      }
+    ]
+  }
+}
