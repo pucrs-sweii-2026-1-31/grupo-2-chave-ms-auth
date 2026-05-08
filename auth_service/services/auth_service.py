@@ -1,14 +1,15 @@
 import os
 import datetime
 import jwt
-from werkzeug.security import check_password_hash
+import bcrypt
 from .db import db
 from ..models.user import User
+from ..config import Config
 
 
 class AuthService:
     def __init__(self):
-        self.secret_key = os.getenv("JWT_SECRET_KEY", os.getenv("SECRET_KEY", "change-me"))
+        self.secret_key = Config.JWT_SECRET
         self.access_expires = int(os.getenv("ACCESS_TOKEN_EXPIRES", 900))
         self.refresh_expires = int(os.getenv("REFRESH_TOKEN_EXPIRES", 86400))
 
@@ -20,7 +21,7 @@ class AuthService:
             raise ValueError("Email e senha são obrigatórios.")
 
         user = User.query.filter_by(email=email).first()
-        if user is None or not check_password_hash(user.password_hash, password):
+        if user is None or not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
             raise ValueError("Credenciais inválidas.")
 
         refresh_token = self._create_token({"sub": user.id, "type": "refresh"}, self.refresh_expires)
