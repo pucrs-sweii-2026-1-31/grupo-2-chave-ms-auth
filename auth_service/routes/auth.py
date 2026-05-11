@@ -1,5 +1,8 @@
 from flask import Blueprint, request, jsonify
+import bcrypt
 from ..services.auth_service import AuthService
+from ..services.db import db
+from ..models.user import User
 
 auth = Blueprint("auth", __name__)
 auth_service = AuthService()
@@ -28,8 +31,59 @@ def register():
 
     Retornar: access_token, refresh_token e mensagem de sucesso, ou erro se falhar.
     """
-    # TODO: Implementar a lógica acima
-    pass
+    try:
+        data = request.get_json() or {}
+
+        # Step 1: Validate request body
+        username = data.get("username", "").strip()
+        email = data.get("email", "").strip()
+        password = data.get("password", "").strip()
+
+        if not username or not email or not password:
+            return jsonify({"error": "Username, email e senha são obrigatórios."}), 400
+
+        if len(password) < 6:
+            return jsonify({"error": "Senha deve ter pelo menos 6 caracteres."}), 400
+
+        # Step 2: Check if user already exists
+        existing_user = User.query.filter(
+            (User.username == username) | (User.email == email)
+        ).first()
+
+        if existing_user:
+            return jsonify({"error": "Username ou email já cadastrado."}), 409
+
+        # Step 3: Hash password
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        # Step 4: Save to database
+        new_user = User(
+            username=username,
+            email=email,
+            password_hash=password_hash,
+            roles=[]
+        )
+        db.session.add(new_user)
+        db.session.commit()
+
+        # Step 5: Generate JWT tokens
+        access_token, refresh_token = auth_service.login({
+            "email": email,
+            "password": password
+        })
+
+        return jsonify({
+            "message": "Usuário registrado com sucesso.",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": new_user.to_dict()
+        }), 201
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        db.session.rollback()
+        return jsonify({"error": "Erro ao registrar usuário."}), 500
+
 
 
 @auth.route("/login", methods=["POST"])
