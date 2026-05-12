@@ -44,8 +44,8 @@ entry=$(jq -n \
     --arg content "$content" \
     '{timestamp: $timestamp, source: $source, git_branch: $git_branch, git_user_name: $git_user_name, call_context: $call_context, role: "user", content: $content}')
 
-# Determine log file path (.ai_log/ next to the repo root)
-repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+# Determine log file path
+repo_root="${GEMINI_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)}"
 log_dir="$repo_root/.ai_log"
 mkdir -p "$log_dir"
 log_path="$log_dir/prompt_log_${log_date}_${username_slug}.json"
