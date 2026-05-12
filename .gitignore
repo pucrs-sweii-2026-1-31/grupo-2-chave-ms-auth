@@ -1,9 +1,14 @@
 # Dependencies
 node_modules/
 
+# Python environment
+.venv/
+
 # Environment
 .env
 
 # Logs
 *.log
 npm-debug.log*
+__pycache__/
+*.pyc
