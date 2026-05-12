@@ -58,5 +58,19 @@
     },
     "role": "user",
     "content": "Perform a code review of the current modifications unstaged for commit. Focus on issues that the migration of code might have introduced, specially unintended logic changes."
+  },
+  {
+    "timestamp": "2026-05-12T01:50:13.454Z",
+    "source": "gemini",
+    "git_branch": "fix/router-responsabilities",
+    "git_user_name": "Germano Bruscato Corrêa",
+    "call_context": {
+      "transcript_path": "/home/gege/.gemini/tmp/grupo-2-chave-ms-auth/chats/session-2026-05-12T01-39-eee2de1d.jsonl",
+      "cwd": "/home/gege/Dev/pucrs/2026.1/es2/trab/grupo-2-chave-ms-auth",
+      "hook_event_name": "BeforeAgent",
+      "timestamp": "2026-05-12T01:50:13.333Z"
+    },
+    "role": "user",
+    "content": "Replace the fragile matchings and heuristics for mapping error to error codes by appropriate exceptions. Create new exceptions if necessary."
   }
 ]

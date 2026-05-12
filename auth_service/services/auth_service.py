@@ -3,6 +3,7 @@ import datetime
 import jwt
 import bcrypt
 from .db import db
+from .exceptions import AuthenticationError, ConflictError
 from ..models.user import User
 from ..config import Config
 
@@ -22,7 +23,7 @@ class AuthService:
 
         user = User.query.filter_by(email=email).first()
         if user is None or not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
-            raise ValueError("Credenciais inválidas.")
+            raise AuthenticationError("Credenciais inválidas.")
 
         refresh_token = self._create_token({"sub": user.id, "type": "refresh"}, self.refresh_expires)
         access_token = self._create_token({"sub": user.id, "type": "access"}, self.access_expires)
@@ -39,11 +40,11 @@ class AuthService:
 
         payload = self._decode_token(refresh_token)
         if payload.get("type") != "refresh":
-            raise ValueError("Token de refresh inválido.")
+            raise AuthenticationError("Token de refresh inválido.")
 
         user = User.query.get(payload.get("sub"))
         if user is None or user.refresh_token != refresh_token:
-            raise ValueError("Token de refresh inválido.")
+            raise AuthenticationError("Token de refresh inválido.")
 
         return self._create_token({"sub": user.id, "type": "access"}, self.access_expires)
 
@@ -61,16 +62,16 @@ class AuthService:
     def get_current_user(self, request):
         auth_header = request.headers.get("Authorization", "")
         if not auth_header.startswith("Bearer "):
-            raise ValueError("Authorization header inválido.")
+            raise AuthenticationError("Authorization header inválido.")
 
         token = auth_header.split(" ", 1)[1]
         payload = self._decode_token(token)
         if payload.get("type") != "access":
-            raise ValueError("Token inválido.")
+            raise AuthenticationError("Token inválido.")
 
         user = User.query.get(payload.get("sub"))
         if user is None:
-            raise ValueError("Usuário não encontrado.")
+            raise AuthenticationError("Usuário não encontrado.")
 
         return user.to_dict()
 
@@ -92,7 +93,7 @@ class AuthService:
         ).first()
 
         if existing_user:
-            raise ValueError("Username ou email já cadastrado.")
+            raise ConflictError("Username ou email já cadastrado.")
 
         # Step 3: Hash password
         password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -236,6 +237,6 @@ class AuthService:
         try:
             return jwt.decode(token, self.secret_key, algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
-            raise ValueError("Token expirado.")
+            raise AuthenticationError("Token expirado.")
         except jwt.InvalidTokenError:
-            raise ValueError("Token inválido.")
+            raise AuthenticationError("Token inválido.")

@@ -2,6 +2,7 @@ from flask import Blueprint, jsonify, request
 
 from ..services.auth_service import AuthService
 from ..services.db import db
+from ..services.exceptions import AuthenticationError, ConflictError
 
 auth = Blueprint("auth", __name__)
 auth_service = AuthService()
@@ -34,10 +35,12 @@ def register():
         data = request.get_json() or {}
         result = auth_service.register(data)
         return jsonify(result), 201
+    except ConflictError as error:
+        return jsonify({"error": str(error)}), 409
     except ValueError as error:
-        if str(error) == "Username ou email já cadastrado.":
-            return jsonify({"error": str(error)}), 409
         return jsonify({"error": str(error)}), 400
+    except AuthenticationError as error:
+        return jsonify({"error": str(error)}), 401
     except Exception as error:
         db.session.rollback()
         return jsonify({"error": "Erro ao registrar usuário."}), 500
@@ -69,6 +72,8 @@ def login():
         return jsonify(
             {"access_token": access_token, "refresh_token": refresh_token}
         ), 200
+    except AuthenticationError as error:
+        return jsonify({"error": str(error)}), 401
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
 
@@ -122,6 +127,8 @@ def refresh():
         data = request.get_json() or {}
         access_token = auth_service.refresh(data)
         return jsonify({"access_token": access_token}), 200
+    except AuthenticationError as error:
+        return jsonify({"error": str(error)}), 401
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
 
@@ -146,8 +153,10 @@ def get_me():
     try:
         user = auth_service.get_current_user(request)
         return jsonify(user), 200
-    except ValueError as error:
+    except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
 
 
 @auth.route("/users", methods=["GET"])
@@ -170,10 +179,12 @@ def get_users():
     try:
         result = auth_service.get_all_users(request)
         return jsonify(result), 200
-    except ValueError as error:
+    except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
     except PermissionError as error:
         return jsonify({"error": str(error)}), 403
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
     except Exception as error:
         return jsonify({"error": "Erro ao listar usuários."}), 500
 
@@ -198,12 +209,14 @@ def get_user(user_id):
     try:
         result = auth_service.get_user_by_id(user_id, request)
         return jsonify(result), 200
-    except ValueError as error:
+    except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
     except PermissionError as error:
         return jsonify({"error": str(error)}), 403
     except LookupError as error:
         return jsonify({"error": str(error)}), 404
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
     except Exception as error:
         return jsonify({"error": "Erro ao buscar usuário."}), 500
 
@@ -231,17 +244,14 @@ def update_user_role(user_id):
         data = request.get_json() or {}
         result = auth_service.update_user_role(user_id, data, request)
         return jsonify(result), 200
-    except ValueError as error:
-        if any(
-            msg in str(error)
-            for msg in ["Token", "Usuário não encontrado", "Authorization"]
-        ):
-            return jsonify({"error": str(error)}), 401
-        return jsonify({"error": str(error)}), 400
+    except AuthenticationError as error:
+        return jsonify({"error": str(error)}), 401
     except PermissionError as error:
         return jsonify({"error": str(error)}), 403
     except LookupError as error:
         return jsonify({"error": str(error)}), 404
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
     except Exception as error:
         db.session.rollback()
         return jsonify({"error": "Erro ao atualizar role do usuário."}), 500
@@ -256,17 +266,14 @@ def update_user_status(user_id):
         data = request.get_json() or {}
         result = auth_service.update_user_status(user_id, data, request)
         return jsonify(result), 200
-    except ValueError as error:
-        if any(
-            msg in str(error)
-            for msg in ["Token", "Usuário não encontrado", "Authorization"]
-        ):
-            return jsonify({"error": str(error)}), 401
-        return jsonify({"error": str(error)}), 400
+    except AuthenticationError as error:
+        return jsonify({"error": str(error)}), 401
     except PermissionError as error:
         return jsonify({"error": str(error)}), 403
     except LookupError as error:
         return jsonify({"error": str(error)}), 404
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
     except Exception as error:
         db.session.rollback()
         return jsonify({"error": "Erro ao atualizar status do usuário."}), 500
