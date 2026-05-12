@@ -45,7 +45,7 @@ Dockerfile
 
 ## 3. Responsabilidade das Camadas
 
-models/: Define a estrutura da tabela no banco. A senha é armazenada como um hash binário. Utilizamos o Flask-Migrate para garantir que todos os alunos do grupo tenham a mesma estrutura de banco.
+models/: Define a estrutura da tabela no banco. A senha é armazenada como um hash binário. Utiliza o SQLAlchemy (via `db.create_all()`) para provisionar a estrutura do banco em ambiente de desenvolvimento.
 
 routes/: Recebe os dados do Frontend (JSON). Sua única função é validar se o JSON está completo e chamar o serviço correto, devolvendo a resposta HTTP apropriada (200, 401, 403, etc.).
 
@@ -356,5 +356,3 @@ Responsabilidades:
 * validação de rotas protegidas;
 * base para RBAC;
 * documentação Swagger;
-* estrutura de testes unitários;
-* integração CI/CD.
