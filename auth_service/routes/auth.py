@@ -1,8 +1,8 @@
-from flask import Blueprint, request, jsonify
-import bcrypt
+from flask import Blueprint, jsonify, request
+
 from ..services.auth_service import AuthService
 from ..services.db import db
-from ..models.user import User
+from ..services.exceptions import AuthenticationError, ConflictError
 
 auth = Blueprint("auth", __name__)
 auth_service = AuthService()
@@ -11,7 +11,7 @@ auth_service = AuthService()
 @auth.route("/register", methods=["POST"])
 def register():
     """
-    Rota para registrar um novo usuário.
+    Registrar um novo usuário.
 
     Passos necessários:
     1. Validar o corpo da requisição (body): verificar se os campos obrigatórios estão presentes,
@@ -30,66 +30,61 @@ def register():
        autenticar o usuário imediatamente.
 
     Retornar: access_token, refresh_token e mensagem de sucesso, ou erro se falhar.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            username:
+              type: string
+              example: johndoe
+            email:
+              type: string
+              example: john@example.com
+            password:
+              type: string
+              example: secret123
+    responses:
+      201:
+        description: Usuário registrado com sucesso.
+        schema:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+            message:
+              type: string
+      400:
+        description: Dados inválidos.
+      409:
+        description: Usuário ou email já existe.
     """
     try:
         data = request.get_json() or {}
-
-        # Step 1: Validate request body
-        username = data.get("username", "").strip()
-        email = data.get("email", "").strip()
-        password = data.get("password", "").strip()
-
-        if not username or not email or not password:
-            return jsonify({"error": "Username, email e senha são obrigatórios."}), 400
-
-        if len(password) < 6:
-            return jsonify({"error": "Senha deve ter pelo menos 6 caracteres."}), 400
-
-        # Step 2: Check if user already exists
-        existing_user = User.query.filter(
-            (User.username == username) | (User.email == email)
-        ).first()
-
-        if existing_user:
-            return jsonify({"error": "Username ou email já cadastrado."}), 409
-
-        # Step 3: Hash password
-        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-
-        # Step 4: Save to database
-        new_user = User(
-            username=username,
-            email=email,
-            password_hash=password_hash,
-            roles=[]
-        )
-        db.session.add(new_user)
-        db.session.commit()
-
-        # Step 5: Generate JWT tokens
-        access_token, refresh_token = auth_service.login({
-            "email": email,
-            "password": password
-        })
-
-        return jsonify({
-            "message": "Usuário registrado com sucesso.",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "user": new_user.to_dict()
-        }), 201
+        result = auth_service.register(data)
+        return jsonify(result), 201
+    except ConflictError as error:
+        return jsonify({"error": str(error)}), 409
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
+    except AuthenticationError as error:
+        return jsonify({"error": str(error)}), 401
     except Exception as error:
         db.session.rollback()
         return jsonify({"error": "Erro ao registrar usuário."}), 500
 
 
-
 @auth.route("/login", methods=["POST"])
 def login():
     """
-    Rota para fazer login de um usuário existente.
+    Autenticar um usuário.
 
     Passos necessários:
     1. Validar o corpo da requisição (body): verificar se os campos 'email' e 'password'
@@ -105,11 +100,45 @@ def login():
        informações do usuário (como user_id).
 
     Retornar: access_token e refresh_token, ou erro se falhar.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            email:
+              type: string
+              example: john@example.com
+            password:
+              type: string
+              example: secret123
+    responses:
+      200:
+        description: Login realizado com sucesso.
+        schema:
+          type: object
+          properties:
+            access_token:
+              type: string
+            refresh_token:
+              type: string
+      400:
+        description: Dados inválidos.
+      401:
+        description: Credenciais inválidas.
     """
     try:
         data = request.get_json() or {}
         access_token, refresh_token = auth_service.login(data)
-        return jsonify({"access_token": access_token, "refresh_token": refresh_token}), 200
+        return jsonify(
+            {"access_token": access_token, "refresh_token": refresh_token}
+        ), 200
+    except AuthenticationError as error:
+        return jsonify({"error": str(error)}), 401
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
 
@@ -117,7 +146,7 @@ def login():
 @auth.route("/logout", methods=["POST"])
 def logout():
     """
-    Rota para fazer logout do usuário.
+    Logout do usuário.
 
     Como JWT é stateless, o logout pode ser simples: apenas confirmar que o token foi
     "invalidado" (embora na prática, o cliente deve descartar o token).
@@ -131,6 +160,22 @@ def logout():
     3. Retornar mensagem de sucesso.
 
     Nota: Em sistemas stateless, o logout é mais do lado do cliente.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        schema:
+          type: object
+          properties:
+            refresh_token:
+              type: string
+    responses:
+      200:
+        description: Logout realizado com sucesso.
+      400:
+        description: Dados inválidos.
     """
     try:
         data = request.get_json() or {}
@@ -143,7 +188,7 @@ def logout():
 @auth.route("/refresh", methods=["POST"])
 def refresh():
     """
-    Rota para renovar o access token usando o refresh token.
+    Renovar access token.
 
     Passos necessários:
     1. Validar o corpo da requisição (body): verificar se o campo 'refresh_token' está presente.
@@ -158,11 +203,37 @@ def refresh():
        refresh_token).
 
     Retornar: novo access_token (e refresh_token se renovado), ou erro se falhar.
+    ---
+    tags:
+      - Authentication
+    parameters:
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            refresh_token:
+              type: string
+    responses:
+      200:
+        description: Token renovado com sucesso.
+        schema:
+          type: object
+          properties:
+            access_token:
+              type: string
+      401:
+        description: Token inválido ou expirado.
+      400:
+        description: Dados inválidos.
     """
     try:
         data = request.get_json() or {}
         access_token = auth_service.refresh(data)
         return jsonify({"access_token": access_token}), 200
+    except AuthenticationError as error:
+        return jsonify({"error": str(error)}), 401
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
 
@@ -170,7 +241,7 @@ def refresh():
 @auth.route("/me", methods=["GET"])
 def get_me():
     """
-    Rota para obter o perfil completo do usuário autenticado.
+    Obter perfil do usuário logado.
 
     Passos necessários:
     1. Verificar autenticação: usar decorator @jwt_required para garantir que o usuário está logado
@@ -183,18 +254,31 @@ def get_me():
        hasheada.
 
     Retornar: dados do usuário em JSON, ou erro se não autenticado ou usuário não encontrado.
+    ---
+    tags:
+      - Users
+    security:
+      - Bearer: []
+    responses:
+      200:
+        description: Perfil do usuário.
+      401:
+        description: Não autenticado.
     """
     try:
-        user = auth_service.get_current_user(request)
+        auth_header = request.headers.get("Authorization", "")
+        user = auth_service.get_current_user(auth_header)
         return jsonify(user), 200
-    except ValueError as error:
+    except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
 
 
 @auth.route("/users", methods=["GET"])
 def get_users():
     """
-    Rota para listar todos os usuários (provavelmente para administradores).
+    Listar todos os usuários (Admin).
 
     Passos necessários:
     1. Verificar autenticação e autorização: usar @jwt_required e verificar se o usuário tem
@@ -207,31 +291,41 @@ def get_users():
        por status ou role.
 
     Retornar: lista de usuários em JSON, ou erro se não autorizado.
+    ---
+    tags:
+      - Users
+    security:
+      - Bearer: []
+    parameters:
+      - name: limit
+        in: query
+        type: integer
+        default: 10
+      - name: offset
+        in: query
+        type: integer
+        default: 0
+    responses:
+      200:
+        description: Lista de usuários.
+      401:
+        description: Não autenticado.
+      403:
+        description: Não autorizado (apenas Admin).
     """
     try:
-        # Step 1: Verify authentication and authorization
-        current_user = auth_service.get_current_user(request)
-        if "admin" not in current_user.get("roles", []):
-            return jsonify({"error": "Acesso negado. Apenas administradores podem listar usuários."}), 403
-
-        # Step 2: Fetch users from database with pagination
+        auth_header = request.headers.get("Authorization", "")
         limit = request.args.get("limit", default=10, type=int)
         offset = request.args.get("offset", default=0, type=int)
-
-        users = User.query.limit(limit).offset(offset).all()
-        total = User.query.count()
-
-        # Step 3: Filter data and return only public fields
-        users_list = [user.to_dict() for user in users]
-
-        return jsonify({
-            "users": users_list,
-            "total": total,
-            "limit": limit,
-            "offset": offset
-        }), 200
-    except ValueError as error:
+        
+        result = auth_service.get_all_users(auth_header, limit, offset)
+        return jsonify(result), 200
+    except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
+    except PermissionError as error:
+        return jsonify({"error": str(error)}), 403
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
     except Exception as error:
         return jsonify({"error": "Erro ao listar usuários."}), 500
 
@@ -239,7 +333,7 @@ def get_users():
 @auth.route("/users/<int:user_id>", methods=["GET"])
 def get_user(user_id):
     """
-    Rota para obter detalhes de um usuário específico por ID.
+    Obter detalhes de um usuário.
 
     Passos necessários:
     1. Verificar autenticação: usar @jwt_required.
@@ -252,26 +346,38 @@ def get_user(user_id):
     4. Retornar dados: devolver JSON com detalhes do usuário (sem senha).
 
     Retornar: dados do usuário, ou erro se não encontrado ou não autorizado.
+    ---
+    tags:
+      - Users
+    security:
+      - Bearer: []
+    parameters:
+      - name: user_id
+        in: path
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Detalhes do usuário.
+      401:
+        description: Não autenticado.
+      403:
+        description: Não autorizado.
+      404:
+        description: Usuário não encontrado.
     """
     try:
-        # Step 1: Verify authentication
-        current_user = auth_service.get_current_user(request)
-        current_user_id = current_user.get("id")
-
-        # Step 2: Verify authorization
-        is_admin = "admin" in current_user.get("roles", [])
-        if current_user_id != user_id and not is_admin:
-            return jsonify({"error": "Acesso negado. Você não tem permissão para acessar este usuário."}), 403
-
-        # Step 3: Fetch user from database
-        user = User.query.get(user_id)
-        if user is None:
-            return jsonify({"error": "Usuário não encontrado."}), 404
-
-        # Step 4: Return user data
-        return jsonify(user.to_dict()), 200
-    except ValueError as error:
+        auth_header = request.headers.get("Authorization", "")
+        result = auth_service.get_user_by_id(user_id, auth_header)
+        return jsonify(result), 200
+    except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
+    except PermissionError as error:
+        return jsonify({"error": str(error)}), 403
+    except LookupError as error:
+        return jsonify({"error": str(error)}), 404
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
     except Exception as error:
         return jsonify({"error": "Erro ao buscar usuário."}), 500
 
@@ -279,7 +385,7 @@ def get_user(user_id):
 @auth.route("/users/<int:user_id>/role", methods=["PATCH"])
 def update_user_role(user_id):
     """
-    Rota para atualizar o role de um usuário (apenas administradores).
+    Atualizar role de um usuário (Admin).
 
     Passos necessários:
     1. Verificar autenticação e autorização: @jwt_required e verificar se é admin.
@@ -294,41 +400,48 @@ def update_user_role(user_id):
     5. Retornar sucesso: confirmar a atualização.
 
     Retornar: mensagem de sucesso, ou erro se não autorizado, usuário não encontrado, etc.
+    ---
+    tags:
+      - Users
+    security:
+      - Bearer: []
+    parameters:
+      - name: user_id
+        in: path
+        type: integer
+        required: true
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            role:
+              type: string
+              example: admin
+    responses:
+      200:
+        description: Role atualizado com sucesso.
+      401:
+        description: Não autenticado.
+      403:
+        description: Não autorizado.
+      404:
+        description: Usuário não encontrado.
     """
     try:
-        # Step 1: Verify authentication and authorization
-        current_user = auth_service.get_current_user(request)
-        if "admin" not in current_user.get("roles", []):
-            return jsonify({"error": "Acesso negado. Apenas administradores podem atualizar roles."}), 403
-
-        # Step 2: Validate request body
         data = request.get_json() or {}
-        role = data.get("role", "").strip()
-
-        if not role:
-            return jsonify({"error": "Campo 'role' é obrigatório."}), 400
-
-        valid_roles = ["user", "admin"]
-        if role not in valid_roles:
-            return jsonify({"error": f"Role inválido. Valores permitidos: {', '.join(valid_roles)}"}), 400
-
-        # Step 3: Fetch user
-        user = User.query.get(user_id)
-        if user is None:
-            return jsonify({"error": "Usuário não encontrado."}), 404
-
-        # Step 4: Update in database
-        if role not in user.roles:
-            user.roles.append(role)
-            db.session.commit()
-
-        # Step 5: Return success
-        return jsonify({
-            "message": "Role do usuário atualizado com sucesso.",
-            "user": user.to_dict()
-        }), 200
-    except ValueError as error:
+        auth_header = request.headers.get("Authorization", "")
+        result = auth_service.update_user_role(user_id, data, auth_header)
+        return jsonify(result), 200
+    except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
+    except PermissionError as error:
+        return jsonify({"error": str(error)}), 403
+    except LookupError as error:
+        return jsonify({"error": str(error)}), 404
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
     except Exception as error:
         db.session.rollback()
         return jsonify({"error": "Erro ao atualizar role do usuário."}), 500
@@ -337,13 +450,13 @@ def update_user_role(user_id):
 @auth.route("/users/<int:user_id>/status", methods=["PATCH"])
 def update_user_status(user_id):
     """
-    Rota para atualizar o status de um usuário (apenas administradores).
+    Atualizar status de um usuário (Admin).
 
     Passos necessários:
     1. Verificar autenticação e autorização: @jwt_required e verificar se é admin.
 
     2. Validar corpo da requisição: verificar campo 'status' no body, validar se é um status válido
-       (ex: 'active', 'inactive', 'banned').
+       (ex: 'active', 'blocked').
 
     3. Buscar usuário: verificar se o user_id existe no banco.
 
@@ -352,40 +465,48 @@ def update_user_status(user_id):
     5. Retornar sucesso: confirmar a atualização.
 
     Retornar: mensagem de sucesso, ou erro se não autorizado, usuário não encontrado, etc.
+    ---
+    tags:
+      - Users
+    security:
+      - Bearer: []
+    parameters:
+      - name: user_id
+        in: path
+        type: integer
+        required: true
+      - in: body
+        name: body
+        required: true
+        schema:
+          type: object
+          properties:
+            status:
+              type: string
+              example: active
+    responses:
+      200:
+        description: Status atualizado com sucesso.
+      401:
+        description: Não autenticado.
+      403:
+        description: Não autorizado.
+      404:
+        description: Usuário não encontrado.
     """
     try:
-        # Step 1: Verify authentication and authorization
-        current_user = auth_service.get_current_user(request)
-        if "admin" not in current_user.get("roles", []):
-            return jsonify({"error": "Acesso negado. Apenas administradores podem atualizar status."}), 403
-
-        # Step 2: Validate request body
         data = request.get_json() or {}
-        status = data.get("status", "").strip()
-
-        if not status:
-            return jsonify({"error": "Campo 'status' é obrigatório."}), 400
-
-        valid_statuses = ["active", "inactive", "banned"]
-        if status not in valid_statuses:
-            return jsonify({"error": f"Status inválido. Valores permitidos: {', '.join(valid_statuses)}"}), 400
-
-        # Step 3: Fetch user
-        user = User.query.get(user_id)
-        if user is None:
-            return jsonify({"error": "Usuário não encontrado."}), 404
-
-        # Step 4: Update in database
-        user.status = status
-        db.session.commit()
-
-        # Step 5: Return success
-        return jsonify({
-            "message": "Status do usuário atualizado com sucesso.",
-            "user": user.to_dict()
-        }), 200
-    except ValueError as error:
+        auth_header = request.headers.get("Authorization", "")
+        result = auth_service.update_user_status(user_id, data, auth_header)
+        return jsonify(result), 200
+    except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
+    except PermissionError as error:
+        return jsonify({"error": str(error)}), 403
+    except LookupError as error:
+        return jsonify({"error": str(error)}), 404
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
     except Exception as error:
         db.session.rollback()
         return jsonify({"error": "Erro ao atualizar status do usuário."}), 500
