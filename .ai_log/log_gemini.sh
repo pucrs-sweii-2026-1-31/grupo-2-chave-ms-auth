@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
 
-# This script is a wrapper for Gemini CLI hooks.
-# It calls the main log_prompts.sh script and ensures
-# that the output is valid JSON for Gemini CLI.
-
 # Get the directory of this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 

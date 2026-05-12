@@ -1,0 +1,34 @@
+[
+  {
+    "timestamp": "2026-05-12T00:28:22.857Z",
+    "source": "claude",
+    "git_branch": "chore/gemini-logger",
+    "git_user_name": "Germano Bruscato Corrêa",
+    "call_context": {},
+    "role": "user",
+    "content": "Test prompt"
+  },
+  {
+    "timestamp": "2026-05-12T00:43:02.431Z",
+    "source": "claude",
+    "git_branch": "chore/gemini-logger",
+    "git_user_name": "Germano Bruscato Corrêa",
+    "call_context": {},
+    "role": "user",
+    "content": "manual test"
+  },
+  {
+    "timestamp": "2026-05-12T00:59:58.068Z",
+    "source": "claude",
+    "git_branch": "chore/gemini-logger",
+    "git_user_name": "Germano Bruscato Corrêa",
+    "call_context": {
+      "transcript_path": "/home/gege/.gemini/tmp/grupo-2-chave-ms-auth/chats/session-2026-05-12T00-59-5a2a2399.jsonl",
+      "cwd": "/home/gege/Dev/pucrs/2026.1/es2/trab/grupo-2-chave-ms-auth",
+      "hook_event_name": "BeforeAgent",
+      "timestamp": "2026-05-12T00:59:57.973Z"
+    },
+    "role": "user",
+    "content": "test log"
+  }
+]
