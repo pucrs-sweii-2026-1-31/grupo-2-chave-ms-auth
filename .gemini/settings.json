@@ -4,7 +4,7 @@
       {
         "name": "ai-prompt-auto-log",
         "type": "command",
-        "command": "bash $GEMINI_PROJECT_DIR/ai_log/log_gemini.sh",
+        "command": "bash $GEMINI_PROJECT_DIR/.ai_log/log_gemini.sh",
         "description": "Automatically logs user prompts to a JSON file."
       }
     ]
