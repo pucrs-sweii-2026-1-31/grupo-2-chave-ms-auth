@@ -151,7 +151,8 @@ def get_me():
     Retornar: dados do usuário em JSON, ou erro se não autenticado ou usuário não encontrado.
     """
     try:
-        user = auth_service.get_current_user(request)
+        auth_header = request.headers.get("Authorization", "")
+        user = auth_service.get_current_user(auth_header)
         return jsonify(user), 200
     except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
@@ -177,7 +178,11 @@ def get_users():
     Retornar: lista de usuários em JSON, ou erro se não autorizado.
     """
     try:
-        result = auth_service.get_all_users(request)
+        auth_header = request.headers.get("Authorization", "")
+        limit = request.args.get("limit", default=10, type=int)
+        offset = request.args.get("offset", default=0, type=int)
+        
+        result = auth_service.get_all_users(auth_header, limit, offset)
         return jsonify(result), 200
     except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
@@ -207,7 +212,8 @@ def get_user(user_id):
     Retornar: dados do usuário, ou erro se não encontrado ou não autorizado.
     """
     try:
-        result = auth_service.get_user_by_id(user_id, request)
+        auth_header = request.headers.get("Authorization", "")
+        result = auth_service.get_user_by_id(user_id, auth_header)
         return jsonify(result), 200
     except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
@@ -242,7 +248,8 @@ def update_user_role(user_id):
     """
     try:
         data = request.get_json() or {}
-        result = auth_service.update_user_role(user_id, data, request)
+        auth_header = request.headers.get("Authorization", "")
+        result = auth_service.update_user_role(user_id, data, auth_header)
         return jsonify(result), 200
     except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401
@@ -264,7 +271,8 @@ def update_user_status(user_id):
     """
     try:
         data = request.get_json() or {}
-        result = auth_service.update_user_status(user_id, data, request)
+        auth_header = request.headers.get("Authorization", "")
+        result = auth_service.update_user_status(user_id, data, auth_header)
         return jsonify(result), 200
     except AuthenticationError as error:
         return jsonify({"error": str(error)}), 401

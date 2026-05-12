@@ -59,9 +59,8 @@ class AuthService:
             user.refresh_token = None
             db.session.commit()
 
-    def get_current_user(self, request):
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
+    def get_current_user(self, auth_header):
+        if not auth_header or not auth_header.startswith("Bearer "):
             raise AuthenticationError("Authorization header inválido.")
 
         token = auth_header.split(" ", 1)[1]
@@ -121,16 +120,13 @@ class AuthService:
             "user": new_user.to_dict()
         }
 
-    def get_all_users(self, request):
+    def get_all_users(self, auth_header, limit=10, offset=0):
         # Step 1: Verify authentication and authorization
-        current_user = self.get_current_user(request)
+        current_user = self.get_current_user(auth_header)
         if "admin" not in current_user.get("roles", []):
             raise PermissionError("Acesso negado. Apenas administradores podem listar usuários.")
 
         # Step 2: Fetch users from database with pagination
-        limit = request.args.get("limit", default=10, type=int)
-        offset = request.args.get("offset", default=0, type=int)
-
         users = User.query.limit(limit).offset(offset).all()
         total = User.query.count()
 
@@ -144,9 +140,9 @@ class AuthService:
             "offset": offset
         }
 
-    def get_user_by_id(self, user_id, request):
+    def get_user_by_id(self, user_id, auth_header):
         # Step 1: Verify authentication
-        current_user = self.get_current_user(request)
+        current_user = self.get_current_user(auth_header)
         current_user_id = current_user.get("id")
 
         # Step 2: Verify authorization
@@ -162,9 +158,9 @@ class AuthService:
         # Step 4: Return user data
         return user.to_dict()
 
-    def update_user_role(self, user_id, data, request):
+    def update_user_role(self, user_id, data, auth_header):
         # Step 1: Verify authentication and authorization
-        current_user = self.get_current_user(request)
+        current_user = self.get_current_user(auth_header)
         if "admin" not in current_user.get("roles", []):
             raise PermissionError("Acesso negado. Apenas administradores podem atualizar roles.")
 
@@ -194,9 +190,9 @@ class AuthService:
             "user": user.to_dict()
         }
 
-    def update_user_status(self, user_id, data, request):
+    def update_user_status(self, user_id, data, auth_header):
         # Step 1: Verify authentication and authorization
-        current_user = self.get_current_user(request)
+        current_user = self.get_current_user(auth_header)
         if "admin" not in current_user.get("roles", []):
             raise PermissionError("Acesso negado. Apenas administradores podem atualizar status.")
 
