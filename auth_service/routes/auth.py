@@ -2,12 +2,14 @@ import logging
 from flask import Blueprint, jsonify, request
 
 from ..services.auth_service import AuthService
-from ..services.db import db
+from ..repositories.user_repository import UserRepository
 from ..services.exceptions import AuthenticationError, ConflictError
 
 logger = logging.getLogger(__name__)
 auth = Blueprint("auth", __name__)
-auth_service = AuthService()
+
+user_repository = UserRepository()
+auth_service = AuthService(user_repository)
 
 
 @auth.route("/register", methods=["POST"])
@@ -82,7 +84,6 @@ def register():
         logger.warning(f"Authentication error during registration: {str(error)}")
         return jsonify({"error": str(error)}), 401
     except Exception as error:
-        db.session.rollback()
         logger.error(f"Unexpected error during registration: {str(error)}", exc_info=True)
         return jsonify({"error": "Erro ao registrar usuário."}), 500
 
@@ -196,7 +197,6 @@ def logout():
         logger.warning(f"Invalid logout data: {str(error)}")
         return jsonify({"error": str(error)}), 400
     except Exception as error:
-        db.session.rollback()
         logger.error(f"Unexpected error during logout: {str(error)}", exc_info=True)
         return jsonify({"error": "Erro ao realizar logout."}), 500
 
@@ -482,7 +482,6 @@ def update_user_role(user_id):
         logger.warning(f"Invalid role update data for user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 400
     except Exception as error:
-        db.session.rollback()
         logger.error(f"Unexpected error updating role for user {user_id}: {str(error)}", exc_info=True)
         return jsonify({"error": "Erro ao atualizar role do usuário."}), 500
 
@@ -552,6 +551,5 @@ def update_user_status(user_id):
         logger.warning(f"Invalid status update data for user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 400
     except Exception as error:
-        db.session.rollback()
         logger.error(f"Unexpected error updating status for user {user_id}: {str(error)}", exc_info=True)
         return jsonify({"error": "Erro ao atualizar status do usuário."}), 500
