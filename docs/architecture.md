@@ -30,57 +30,60 @@ Estrutura identificada no projeto:
 
 ```text
 auth_service/
-├── models/      # Definição das tabelas e esquemas (SQLAlchemy)
-├── routes/      # Endpoints e Blueprints (Interface REST)
-├── services/    # Regras de negócio e lógica de segurança
-├── config.py    # Variáveis de ambiente (DB_URL, JWT_SECRET)
-├── __init__.py  # Fábrica do App (Application Factory)
+├── models/       # Definição das tabelas e esquemas (SQLAlchemy)
+├── repositories/ # Camada de acesso a dados (Abstração do DB)
+├── routes/       # Endpoints e Blueprints (Interface REST)
+├── services/     # Regras de negócio e lógica de segurança
+├── config.py     # Variáveis de ambiente (DB_URL, JWT_SECRET)
+├── __init__.py   # Fábrica do App (Application Factory)
 
+tests/            # Testes unitários e de integração
+bruno/            # Coleção de requisições para teste de API (Bruno)
+db/               # Scripts de inicialização e Dockerfile do banco
 run.py
 requirements.txt
 Dockerfile
+Makefile          # Comandos para automação (testes, setup)
 ```
 ---
 
 
 ## 3. Responsabilidade das Camadas
 
-models/: Define a estrutura da tabela no banco. A senha é armazenada como um hash binário. Utiliza o SQLAlchemy (via `db.create_all()`) para provisionar a estrutura do banco em ambiente de desenvolvimento.
+models/: Define a estrutura da tabela no banco. A senha é armazenada como um hash bcrypt (string). Utiliza o SQLAlchemy para representar as entidades.
 
-routes/: Recebe os dados do Frontend (JSON). Sua única função é validar se o JSON está completo e chamar o serviço correto, devolvendo a resposta HTTP apropriada (200, 401, 403, etc.).
+repositories/: Camada responsável por realizar as operações de persistência e consulta no banco de dados. Isola a lógica de busca (SQLAlchemy/Query) das regras de negócio.
 
-services/: Camada onde reside a inteligência. Aqui é feita a verificação de hash com bcrypt, a criação do payload do JWT e a lógica de expiração dos tokens.
+routes/: Recebe os dados do Frontend (JSON). Sua função é validar a estrutura básica da requisição e encaminhar para os serviços.
+
+services/: Camada onde reside a inteligência e regras de negócio. Aqui é feita a verificação de hash com bcrypt, a criação do payload do JWT e a lógica de expiração dos tokens. Utiliza os repositórios para persistência.
 
 config.py: Centraliza o uso de variáveis de ambiente, garantindo que chaves de segurança não fiquem expostas diretamente no código.
 
 
-## 4. Endpoints do Microsserviço
+## 4. Documentação da API (Swagger)
 
-O MS Auth deve possuir os seguintes endpoints:
+A lista completa de endpoints, parâmetros e formatos de resposta está documentada utilizando Swagger (OpenAPI).
 
-| Método | Endpoint             | Responsabilidade                                      |
-| ------ | -------------------- | ------------------------------------------------------|                    
-| POST   | `/register`          |Cadastro com hash de senha imediato.                   |
-| POST   | `/login`             |Validação de credenciais e entrega de par de tokens.   |
-| POST   | `/logout`            |Revogação do Refresh Token (no banco/lado do servidor).|
-| POST   | `/refresh`           |Troca de Refresh Token válido por novo Access Token.   |
-| GET    | `/me`                |Retorna o perfil completo extraído do token atual.     |
-| GET    | `/users`             |Listagem administrativa de contas.                     |
-| GET    | `/users/{id}`        |Promoção ou rebaixamento de privilégios.               |
-| PATCH  | `/users/{id}/role`   |Alterar permissões                                     |
-| PATCH  | `/users/{id}/status` |Bloqueio ou ativação de conta.                         |
+A documentação interativa pode ser acessada em:
 
-
+```text
+/apidocs
+```
 
 ---
 
-## 5. Fluxo de Cadastro
+## 5. Observabilidade e Logs
 
-Endpoint:
+O sistema utiliza o módulo nativo de `logging` do Python.
 
-```text
-POST /register
-```
+* **Development:** Nível `DEBUG` ativado, exibindo payloads de requisições e detalhes internos.
+* **Production:** Nível `INFO` por padrão.
+* Logs estruturados para facilitar a depuração de erros de banco, falhas de autenticação e validação de tokens.
+
+---
+
+## 6. Fluxo de Cadastro
 
 Fluxo esperado:
 
@@ -94,13 +97,7 @@ Fluxo esperado:
 
 ---
 
-## 6. Fluxo de Login
-
-Endpoint:
-
-```text
-POST /login
-```
+## 7. Fluxo de Login
 
 Fluxo esperado:
 
@@ -118,7 +115,7 @@ Fluxo esperado:
 
 ---
 
-## 7. Fluxo de Rotas Protegidas
+## 8. Fluxo de Rotas Protegidas
 
 Fluxo esperado:
 
@@ -143,13 +140,7 @@ Possíveis respostas:
 
 ---
 
-## 8. Fluxo de Refresh Token
-
-Endpoint:
-
-```text
-POST /refresh
-```
+## 9. Fluxo de Refresh Token
 
 Fluxo esperado:
 
@@ -160,13 +151,7 @@ Fluxo esperado:
 
 ---
 
-## 9. Fluxo de Logout
-
-Endpoint:
-
-```text
-POST /logout
-```
+## 10. Fluxo de Logout
 
 Fluxo esperado:
 
@@ -179,13 +164,7 @@ Como JWT é stateless, o logout pode ser tratado principalmente pelo frontend re
 
 ---
 
-## 10. Fluxo de Usuário Atual
-
-Endpoint:
-
-```text
-GET /me
-```
+## 11. Fluxo de Usuário Atual
 
 Fluxo esperado:
 
@@ -196,7 +175,7 @@ Fluxo esperado:
 
 ---
 
-## 11. JWT
+## 12. JWT
 
 O sistema utiliza autenticação baseada em JWT.
 
@@ -224,7 +203,7 @@ Características:
 
 ---
 
-## 12. RBAC (Role-Based Access Control)
+## 13. RBAC (Role-Based Access Control)
 
 O sistema deve utilizar controle de acesso baseado em papéis.
 
@@ -260,7 +239,7 @@ Permissões comuns:
 
 ---
 
-## 13. Integração com o Frontend
+## 14. Integração com o Frontend
 
 A tela de autenticação deve se comunicar diretamente com o MS Auth.
 
@@ -292,7 +271,7 @@ Frontend exibe mensagem
 
 ---
 
-## 14. Integração com Outros Microsserviços
+## 15. Integração com Outros Microsserviços
 
 O MS Auth deve atuar como camada central de segurança da plataforma.
 
@@ -308,17 +287,18 @@ Exemplos:
 
 ---
 
-## 15. Tecnologias Utilizadas
+## 16. Tecnologias Utilizadas
 
 Linguagem: Python 
 Framework: Flask (Leve e modular para microsserviços)
 Segurança: Bcrypt (Hash de senha) e PyJWT (Gerenciamento de tokens)
+API Doc: Flasgger (Swagger/OpenAPI)
 Banco de Dados: PostgreSQL (via SQLAlchemy)
 Infraestrutura: Docker e Docker Compose
 
 ---
 
-## 16. Resumo da Arquitetura
+## 17. Resumo da Arquitetura
 
 O microsserviço segue arquitetura em camadas:
 
@@ -329,6 +309,8 @@ routes/
    ↓
 services/
    ↓
+repositories/
+   ↓
 models/
    ↓
 database
@@ -338,13 +320,14 @@ Responsabilidades:
 
 * routes/: recebe requisições HTTP;
 * services/: executa regras de negócio;
+* repositories/: abstrai o acesso ao banco;
 * models/: representa entidades;
 * JWT: autentica requisições;
 * RBAC: controla permissões.
 
 ---
 
-## 17. Escopo da Primeira Entrega (P1)
+## 18. Escopo da Primeira Entrega (P1)
 
 
 * integração com tela de autenticação;
