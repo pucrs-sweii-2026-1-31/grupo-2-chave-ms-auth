@@ -16,6 +16,11 @@ body:json {
   }
 }
 
-vars:post-response {
-  accessToken: res.body.access_token
+script:post-response {
+  if (res.status === 200) {
+    bru.setEnvVar("accessToken", res.body.access_token);
+    if (res.body.refresh_token) {
+      bru.setEnvVar("refreshToken", res.body.refresh_token);
+    }
+  }
 }

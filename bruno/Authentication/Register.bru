@@ -17,3 +17,10 @@ body:json {
     "password": "secret123"
   }
 }
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setEnvVar("accessToken", res.body.access_token);
+    bru.setEnvVar("refreshToken", res.body.refresh_token);
+  }
+}
