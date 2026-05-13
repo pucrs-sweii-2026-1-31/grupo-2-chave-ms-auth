@@ -10,8 +10,6 @@ __pycache__/
 .pytest_cache/
 *.log
 Makefile
-requirements.txt
-Dockerfile
 README.md
 docs/
 bruno/
