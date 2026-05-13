@@ -1,3 +1,5 @@
+import logging
+import sys
 from flask import Flask
 from flask_cors import CORS
 from flasgger import Swagger
@@ -7,6 +9,15 @@ from .routes import auth as auth_blueprint
 
 
 def create_app():
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        stream=sys.stdout
+    )
+    logger = logging.getLogger(__name__)
+    logger.info("Starting MS Auth API...")
+
     app = Flask(__name__)
     app.config.from_object(Config)
 
@@ -49,6 +60,10 @@ def create_app():
     app.register_blueprint(auth_blueprint)
 
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+            logger.info("Database tables created or already exist.")
+        except Exception as e:
+            logger.error(f"Failed to create database tables: {str(e)}", exc_info=True)
 
     return app

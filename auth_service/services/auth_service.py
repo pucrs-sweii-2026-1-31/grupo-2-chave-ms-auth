@@ -1,11 +1,15 @@
 import os
 import datetime
+import logging
 import jwt
 import bcrypt
 from .db import db
 from .exceptions import AuthenticationError, ConflictError
 from ..models.user import User
 from ..config import Config
+
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -23,13 +27,19 @@ class AuthService:
 
         user = User.query.filter_by(email=email).first()
         if user is None or not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode('utf-8')):
+            logger.warning(f"Login failed for email: {email}")
             raise AuthenticationError("Credenciais inválidas.")
 
         refresh_token = self._create_token({"sub": user.id, "type": "refresh"}, self.refresh_expires)
         access_token = self._create_token({"sub": user.id, "type": "access"}, self.access_expires)
 
         user.refresh_token = refresh_token
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Database commit failed during login for user {user.id}: {str(e)}", exc_info=True)
+            raise
 
         return access_token, refresh_token
 
@@ -57,7 +67,12 @@ class AuthService:
         user = User.query.get(payload.get("sub"))
         if user:
             user.refresh_token = None
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Database commit failed during logout for user {user.id}: {str(e)}", exc_info=True)
+                raise
 
     def get_current_user(self, auth_header):
         if not auth_header or not auth_header.startswith("Bearer "):
@@ -105,7 +120,12 @@ class AuthService:
             roles=[]
         )
         db.session.add(new_user)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Database commit failed during registration for user {username}: {str(e)}", exc_info=True)
+            raise
 
         # Step 5: Generate JWT tokens
         access_token, refresh_token = self.login({
@@ -182,7 +202,12 @@ class AuthService:
         # Step 4: Update in database
         if role not in user.roles:
             user.roles.append(role)
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Database commit failed during role update for user {user_id}: {str(e)}", exc_info=True)
+                raise
 
         # Step 5: Return success
         return {
@@ -213,7 +238,12 @@ class AuthService:
 
         # Step 4: Update in database
         user.status = status
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Database commit failed during status update for user {user_id}: {str(e)}", exc_info=True)
+            raise
 
         # Step 5: Return success
         return {
@@ -233,6 +263,8 @@ class AuthService:
         try:
             return jwt.decode(token, self.secret_key, algorithms=["HS256"])
         except jwt.ExpiredSignatureError:
+            logger.warning("Token expired")
             raise AuthenticationError("Token expirado.")
         except jwt.InvalidTokenError:
+            logger.warning("Invalid token")
             raise AuthenticationError("Token inválido.")
