@@ -1,0 +1,25 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "email": "germanobruscato@gmail.com",
+    "password": "123123"
+  }
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.setEnvVar("accessToken", res.body.access_token);
+    bru.setEnvVar("refreshToken", res.body.refresh_token);
+  }
+}

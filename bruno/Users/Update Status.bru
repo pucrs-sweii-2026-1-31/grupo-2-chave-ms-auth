@@ -1,0 +1,21 @@
+meta {
+  name: Update User Status
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/users/1/status
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "status": "active"
+  }
+}
