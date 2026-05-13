@@ -1,9 +1,11 @@
+import logging
 from flask import Blueprint, jsonify, request
 
 from ..services.auth_service import AuthService
 from ..services.db import db
 from ..services.exceptions import AuthenticationError, ConflictError
 
+logger = logging.getLogger(__name__)
 auth = Blueprint("auth", __name__)
 auth_service = AuthService()
 
@@ -71,13 +73,17 @@ def register():
         result = auth_service.register(data)
         return jsonify(result), 201
     except ConflictError as error:
+        logger.warning(f"Registration conflict: {str(error)}")
         return jsonify({"error": str(error)}), 409
     except ValueError as error:
+        logger.warning(f"Invalid registration data: {str(error)}")
         return jsonify({"error": str(error)}), 400
     except AuthenticationError as error:
+        logger.warning(f"Authentication error during registration: {str(error)}")
         return jsonify({"error": str(error)}), 401
     except Exception as error:
         db.session.rollback()
+        logger.error(f"Unexpected error during registration: {str(error)}", exc_info=True)
         return jsonify({"error": "Erro ao registrar usuário."}), 500
 
 
@@ -138,9 +144,14 @@ def login():
             {"access_token": access_token, "refresh_token": refresh_token}
         ), 200
     except AuthenticationError as error:
+        logger.warning(f"Login failed: {str(error)}")
         return jsonify({"error": str(error)}), 401
     except ValueError as error:
+        logger.warning(f"Invalid login data: {str(error)}")
         return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        logger.error(f"Unexpected error during login: {str(error)}", exc_info=True)
+        return jsonify({"error": "Erro ao realizar login."}), 500
 
 
 @auth.route("/logout", methods=["POST"])
@@ -182,7 +193,12 @@ def logout():
         auth_service.logout(data)
         return jsonify({"message": "Logout realizado com sucesso."}), 200
     except ValueError as error:
+        logger.warning(f"Invalid logout data: {str(error)}")
         return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        db.session.rollback()
+        logger.error(f"Unexpected error during logout: {str(error)}", exc_info=True)
+        return jsonify({"error": "Erro ao realizar logout."}), 500
 
 
 @auth.route("/refresh", methods=["POST"])
@@ -233,9 +249,14 @@ def refresh():
         access_token = auth_service.refresh(data)
         return jsonify({"access_token": access_token}), 200
     except AuthenticationError as error:
+        logger.warning(f"Token refresh failed: {str(error)}")
         return jsonify({"error": str(error)}), 401
     except ValueError as error:
+        logger.warning(f"Invalid refresh data: {str(error)}")
         return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        logger.error(f"Unexpected error during token refresh: {str(error)}", exc_info=True)
+        return jsonify({"error": "Erro ao renovar token."}), 500
 
 
 @auth.route("/me", methods=["GET"])
@@ -270,9 +291,14 @@ def get_me():
         user = auth_service.get_current_user(auth_header)
         return jsonify(user), 200
     except AuthenticationError as error:
+        logger.warning(f"Failed to get current user: {str(error)}")
         return jsonify({"error": str(error)}), 401
     except ValueError as error:
+        logger.warning(f"Invalid request for current user: {str(error)}")
         return jsonify({"error": str(error)}), 400
+    except Exception as error:
+        logger.error(f"Unexpected error getting current user: {str(error)}", exc_info=True)
+        return jsonify({"error": "Erro ao obter perfil do usuário."}), 500
 
 
 @auth.route("/users", methods=["GET"])
@@ -321,12 +347,16 @@ def get_users():
         result = auth_service.get_all_users(auth_header, limit, offset)
         return jsonify(result), 200
     except AuthenticationError as error:
+        logger.warning(f"Authentication failed for listing users: {str(error)}")
         return jsonify({"error": str(error)}), 401
     except PermissionError as error:
+        logger.warning(f"Permission denied for listing users: {str(error)}")
         return jsonify({"error": str(error)}), 403
     except ValueError as error:
+        logger.warning(f"Invalid request for listing users: {str(error)}")
         return jsonify({"error": str(error)}), 400
     except Exception as error:
+        logger.error(f"Unexpected error listing users: {str(error)}", exc_info=True)
         return jsonify({"error": "Erro ao listar usuários."}), 500
 
 
@@ -371,14 +401,19 @@ def get_user(user_id):
         result = auth_service.get_user_by_id(user_id, auth_header)
         return jsonify(result), 200
     except AuthenticationError as error:
+        logger.warning(f"Authentication failed for user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 401
     except PermissionError as error:
+        logger.warning(f"Permission denied for user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 403
     except LookupError as error:
+        logger.warning(f"User {user_id} not found: {str(error)}")
         return jsonify({"error": str(error)}), 404
     except ValueError as error:
+        logger.warning(f"Invalid request for user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 400
     except Exception as error:
+        logger.error(f"Unexpected error fetching user {user_id}: {str(error)}", exc_info=True)
         return jsonify({"error": "Erro ao buscar usuário."}), 500
 
 
@@ -435,15 +470,20 @@ def update_user_role(user_id):
         result = auth_service.update_user_role(user_id, data, auth_header)
         return jsonify(result), 200
     except AuthenticationError as error:
+        logger.warning(f"Authentication failed for role update on user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 401
     except PermissionError as error:
+        logger.warning(f"Permission denied for role update on user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 403
     except LookupError as error:
+        logger.warning(f"User {user_id} not found for role update: {str(error)}")
         return jsonify({"error": str(error)}), 404
     except ValueError as error:
+        logger.warning(f"Invalid role update data for user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 400
     except Exception as error:
         db.session.rollback()
+        logger.error(f"Unexpected error updating role for user {user_id}: {str(error)}", exc_info=True)
         return jsonify({"error": "Erro ao atualizar role do usuário."}), 500
 
 
@@ -500,13 +540,18 @@ def update_user_status(user_id):
         result = auth_service.update_user_status(user_id, data, auth_header)
         return jsonify(result), 200
     except AuthenticationError as error:
+        logger.warning(f"Authentication failed for status update on user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 401
     except PermissionError as error:
+        logger.warning(f"Permission denied for status update on user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 403
     except LookupError as error:
+        logger.warning(f"User {user_id} not found for status update: {str(error)}")
         return jsonify({"error": str(error)}), 404
     except ValueError as error:
+        logger.warning(f"Invalid status update data for user {user_id}: {str(error)}")
         return jsonify({"error": str(error)}), 400
     except Exception as error:
         db.session.rollback()
+        logger.error(f"Unexpected error updating status for user {user_id}: {str(error)}", exc_info=True)
         return jsonify({"error": "Erro ao atualizar status do usuário."}), 500
