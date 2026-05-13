@@ -1,25 +1,47 @@
+import os
 import logging
 import sys
-from flask import Flask
+from flask import Flask, request
 from flask_cors import CORS
 from flasgger import Swagger
-from .config import Config
+from .config import Config, Development, Production
 from .services.db import db
 from .routes import auth as auth_blueprint
 
 
 def create_app():
+    # Determine environment
+    env = os.getenv('NODE_ENV', 'production')
+    config_obj = Production
+    log_level = logging.INFO
+
+    if env == 'development':
+        config_obj = Development
+        log_level = logging.DEBUG
+
     # Configure logging
     logging.basicConfig(
-        level=logging.INFO,
+        level=log_level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        stream=sys.stdout
+        stream=sys.stdout,
+        force=True  # Ensure logging is reconfigured
     )
     logger = logging.getLogger(__name__)
-    logger.info("Starting MS Auth API...")
+    logger.info(f"Starting MS Auth API in {env} mode...")
 
     app = Flask(__name__)
-    app.config.from_object(Config)
+    app.config.from_object(config_obj)
+
+    @app.before_request
+    def log_request_info():
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("--- Incoming Request ---")
+            logger.debug(f"Method: {request.method}")
+            logger.debug(f"Path: {request.path}")
+            logger.debug(f"Headers: {dict(request.headers)}")
+            if request.is_json:
+                logger.debug(f"Payload: {request.get_json(silent=True)}")
+            logger.debug("------------------------")
 
     CORS(app)
     
