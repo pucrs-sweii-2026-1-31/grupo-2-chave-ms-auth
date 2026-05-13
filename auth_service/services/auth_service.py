@@ -30,8 +30,8 @@ class AuthService:
             logger.warning(f"Login failed for email: {email}")
             raise AuthenticationError("Credenciais inválidas.")
 
-        refresh_token = self._create_token({"sub": user.id, "type": "refresh"}, self.refresh_expires)
-        access_token = self._create_token({"sub": user.id, "type": "access"}, self.access_expires)
+        refresh_token = self._create_token({"sub": str(user.id), "type": "refresh"}, self.refresh_expires)
+        access_token = self._create_token({"sub": str(user.id), "type": "access"}, self.access_expires)
 
         user.refresh_token = refresh_token
         try:
@@ -56,7 +56,7 @@ class AuthService:
         if user is None or user.refresh_token != refresh_token:
             raise AuthenticationError("Token de refresh inválido.")
 
-        return self._create_token({"sub": user.id, "type": "access"}, self.access_expires)
+        return self._create_token({"sub": str(user.id), "type": "access"}, self.access_expires)
 
     def logout(self, data):
         refresh_token = data.get("refresh_token")
@@ -78,7 +78,7 @@ class AuthService:
         if not auth_header or not auth_header.startswith("Bearer "):
             raise AuthenticationError("Authorization header inválido.")
 
-        token = auth_header.split(" ", 1)[1]
+        token = auth_header.split(" ", 1)[1].strip()
         payload = self._decode_token(token)
         if payload.get("type") != "access":
             logger.error(f"Invalid token type during authentication: {str(payload)}", exc_info=True)
@@ -266,6 +266,6 @@ class AuthService:
         except jwt.ExpiredSignatureError:
             logger.warning("Token expired")
             raise AuthenticationError("Token expirado.")
-        except jwt.InvalidTokenError:
-            logger.warning("Invalid token")
-            raise AuthenticationError("Token inválido.")
+        except jwt.InvalidTokenError as e:
+            logger.warning(f"Invalid token: {str(e)}")
+            raise AuthenticationError(f"Token inválido: {str(e)}")
