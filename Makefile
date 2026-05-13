@@ -13,7 +13,12 @@ setup-tests:
 test:
 	export PYTHONPATH=$$(PYTHONPATH):. && $(PYTEST) tests/unit/test_auth_service.py
 
-clean:
+clean-tests:
 	rm -rf $(VENV)
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 	rm -rf .pytest_cache
+
+rebuild-service:
+	make -C ../chave-infra down
+	docker images -q 'chave-infra-chave-ms-auth:latest' | xargs -r docker rmi
+	make -C ../chave-infra up
