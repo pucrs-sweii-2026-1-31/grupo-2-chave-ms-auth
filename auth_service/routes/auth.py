@@ -53,6 +53,10 @@ def register():
             password:
               type: string
               example: secret123
+            role:
+              type: string
+              example: aluno
+              description: Role opcional do usuário. Se não informado, será atribuída a role padrão 'aluno'.
     responses:
       201:
         description: Usuário registrado com sucesso.

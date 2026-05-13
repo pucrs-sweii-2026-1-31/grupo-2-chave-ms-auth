@@ -97,13 +97,14 @@ def test_register_user_success(auth_service, mock_repo):
     data = {
         "username": "testuser",
         "email": "test@example.com",
-        "password": "password123"
+        "password": "password123",
+        "role": "professor"
     }
     mock_repo.get_by_username_or_email.return_value = None
     
     mock_new_user = MagicMock()
     mock_new_user.id = 1
-    mock_new_user.to_dict.return_value = {"id": 1, "username": "testuser", "email": "test@example.com"}
+    mock_new_user.to_dict.return_value = {"id": 1, "username": "testuser", "email": "test@example.com", "roles": ["professor"]}
     mock_repo.create.return_value = mock_new_user
     
     # Mock login success inside register
@@ -119,7 +120,10 @@ def test_register_user_success(auth_service, mock_repo):
     assert "access_token" in result
     assert "refresh_token" in result
     assert result["user"]["username"] == "testuser"
+    # Verify create was called with the correct role
     mock_repo.create.assert_called_once()
+    call_kwargs = mock_repo.create.call_args[1]
+    assert call_kwargs["roles"] == ["professor"]
     assert mock_repo.commit.call_count >= 1
 
 def test_register_user_already_exists(auth_service, mock_repo):
@@ -136,7 +140,7 @@ def test_register_user_already_exists(auth_service, mock_repo):
         auth_service.register(data)
 
 def test_register_validation_error(auth_service):
-    # Setup
+    # Setup - password too short
     data = {
         "username": "user",
         "email": "email@example.com",
@@ -146,6 +150,74 @@ def test_register_validation_error(auth_service):
     # Execute & Verify
     with pytest.raises(ValueError, match="Senha deve ter pelo menos 6 caracteres."):
         auth_service.register(data)
+
+def test_register_invalid_role(auth_service):
+    # Setup - invalid role
+    data = {
+        "username": "user",
+        "email": "email@example.com",
+        "password": "password123",
+        "role": "super-admin"
+    }
+    
+    # Execute & Verify
+    with pytest.raises(ValueError, match="Role inválido."):
+        auth_service.register(data)
+
+def test_register_default_role(auth_service, mock_repo):
+    # Setup - no role provided, should default to "aluno"
+    data = {
+        "username": "testuser",
+        "email": "test@example.com",
+        "password": "password123"
+    }
+    mock_repo.get_by_username_or_email.return_value = None
+    
+    mock_new_user = MagicMock()
+    mock_new_user.id = 1
+    mock_new_user.to_dict.return_value = {"id": 1, "username": "testuser", "email": "test@example.com", "roles": ["aluno"]}
+    mock_repo.create.return_value = mock_new_user
+    
+    # Mock login success inside register
+    password_hash = bcrypt.hashpw(data["password"].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    mock_new_user.password_hash = password_hash
+    mock_repo.get_by_email.return_value = mock_new_user
+    
+    # Execute
+    result = auth_service.register(data)
+    
+    # Verify
+    call_kwargs = mock_repo.create.call_args[1]
+    assert call_kwargs["roles"] == ["aluno"], "Should default to 'aluno' role"
+    assert result["user"]["username"] == "testuser"
+
+def test_register_role_case_insensitive(auth_service, mock_repo):
+    # Setup - role in uppercase, should be converted to lowercase
+    data = {
+        "username": "testuser",
+        "email": "test@example.com",
+        "password": "password123",
+        "role": "PROFESSOR"
+    }
+    mock_repo.get_by_username_or_email.return_value = None
+    
+    mock_new_user = MagicMock()
+    mock_new_user.id = 1
+    mock_new_user.to_dict.return_value = {"id": 1, "username": "testuser", "email": "test@example.com", "roles": ["professor"]}
+    mock_repo.create.return_value = mock_new_user
+    
+    # Mock login success inside register
+    password_hash = bcrypt.hashpw(data["password"].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    mock_new_user.password_hash = password_hash
+    mock_repo.get_by_email.return_value = mock_new_user
+    
+    # Execute
+    result = auth_service.register(data)
+    
+    # Verify
+    call_kwargs = mock_repo.create.call_args[1]
+    assert call_kwargs["roles"] == ["professor"], "Role should be converted to lowercase"
+    assert result["user"]["username"] == "testuser"
 
 def test_update_user_role_success(auth_service, mock_repo):
     # Setup
