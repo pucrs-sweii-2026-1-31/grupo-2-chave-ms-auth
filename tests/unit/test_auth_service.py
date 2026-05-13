@@ -307,3 +307,183 @@ def test_update_user_status_success(auth_service, mock_repo):
     assert result["message"] == "Status do usuário atualizado com sucesso."
     assert target_user.status == "banned"
     mock_repo.commit.assert_called()
+
+def test_login_missing_fields(auth_service):
+    with pytest.raises(ValueError, match="Email e senha são obrigatórios."):
+        auth_service.login({"email": "test@example.com"})
+    with pytest.raises(ValueError, match="Email e senha são obrigatórios."):
+        auth_service.login({"password": "password123"})
+
+def test_refresh_missing_token(auth_service):
+    with pytest.raises(ValueError, match="Refresh token é obrigatório."):
+        auth_service.refresh({})
+
+def test_logout_missing_token(auth_service):
+    with pytest.raises(ValueError, match="Refresh token é obrigatório."):
+        auth_service.logout({})
+
+def test_register_missing_fields(auth_service):
+    with pytest.raises(ValueError, match="Username, email e senha são obrigatórios."):
+        auth_service.register({"email": "test@example.com", "password": "password123"})
+    with pytest.raises(ValueError, match="Username, email e senha são obrigatórios."):
+        auth_service.register({"username": "testuser", "password": "password123"})
+    with pytest.raises(ValueError, match="Username, email e senha são obrigatórios."):
+        auth_service.register({"username": "testuser", "email": "test@example.com"})
+
+def test_update_user_role_missing_field(auth_service, mock_repo):
+    admin_token = auth_service._create_token({"sub": "2", "type": "access"}, 900)
+    auth_header = f"Bearer {admin_token}"
+    admin_user = MagicMock()
+    admin_user.to_dict.return_value = {"id": 2, "roles": ["admin"]}
+    mock_repo.get_by_id.return_value = admin_user
+    
+    with pytest.raises(ValueError, match="Campo 'role' é obrigatório."):
+        auth_service.update_user_role(1, {}, auth_header)
+
+def test_update_user_status_missing_field(auth_service, mock_repo):
+    admin_token = auth_service._create_token({"sub": "2", "type": "access"}, 900)
+    auth_header = f"Bearer {admin_token}"
+    admin_user = MagicMock()
+    admin_user.to_dict.return_value = {"id": 2, "roles": ["admin"]}
+    mock_repo.get_by_id.return_value = admin_user
+    
+    with pytest.raises(ValueError, match="Campo 'status' é obrigatório."):
+        auth_service.update_user_status(1, {}, auth_header)
+
+def test_get_all_users_unauthorized(auth_service, mock_repo):
+    user_token = auth_service._create_token({"sub": "3", "type": "access"}, 900)
+    auth_header = f"Bearer {user_token}"
+    regular_user = MagicMock()
+    regular_user.to_dict.return_value = {"id": 3, "roles": ["user"]}
+    mock_repo.get_by_id.return_value = regular_user
+    
+    with pytest.raises(PermissionError, match="Acesso negado."):
+        auth_service.get_all_users(auth_header)
+
+def test_get_user_by_id_unauthorized(auth_service, mock_repo):
+    user_token = auth_service._create_token({"sub": "3", "type": "access"}, 900)
+    auth_header = f"Bearer {user_token}"
+    regular_user = MagicMock()
+    regular_user.to_dict.return_value = {"id": 3, "roles": ["user"]}
+    
+    def side_effect(user_id):
+        if str(user_id) == "3": return regular_user
+        return None
+    mock_repo.get_by_id.side_effect = side_effect
+    
+    with pytest.raises(PermissionError, match="Acesso negado."):
+        auth_service.get_user_by_id(1, auth_header)
+
+def test_update_user_status_unauthorized(auth_service, mock_repo):
+    user_token = auth_service._create_token({"sub": "3", "type": "access"}, 900)
+    auth_header = f"Bearer {user_token}"
+    regular_user = MagicMock()
+    regular_user.to_dict.return_value = {"id": 3, "roles": ["user"]}
+    mock_repo.get_by_id.return_value = regular_user
+    
+    with pytest.raises(PermissionError, match="Acesso negado."):
+        auth_service.update_user_status(1, {"status": "banned"}, auth_header)
+
+def test_get_current_user_not_found(auth_service, mock_repo):
+    access_token = auth_service._create_token({"sub": "999", "type": "access"}, 900)
+    auth_header = f"Bearer {access_token}"
+    mock_repo.get_by_id.return_value = None
+    
+    with pytest.raises(AuthenticationError, match="Usuário não encontrado."):
+        auth_service.get_current_user(auth_header)
+
+def test_get_user_by_id_not_found(auth_service, mock_repo):
+    admin_token = auth_service._create_token({"sub": "2", "type": "access"}, 900)
+    auth_header = f"Bearer {admin_token}"
+    
+    admin_user = MagicMock()
+    admin_user.to_dict.return_value = {"id": 2, "roles": ["admin"]}
+    
+    def side_effect(user_id):
+        if str(user_id) == "2": return admin_user
+        return None
+    mock_repo.get_by_id.side_effect = side_effect
+    
+    with pytest.raises(LookupError, match="Usuário não encontrado."):
+        auth_service.get_user_by_id(999, auth_header)
+
+def test_db_commit_failure_during_login(auth_service, mock_repo):
+    email = "test@example.com"
+    password = "password123"
+    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    mock_user = MagicMock()
+    mock_user.password_hash = password_hash
+    mock_repo.get_by_email.return_value = mock_user
+    mock_repo.commit.side_effect = Exception("DB Error")
+    
+    with pytest.raises(Exception, match="DB Error"):
+        auth_service.login({"email": email, "password": password})
+
+def test_db_commit_failure_during_register(auth_service, mock_repo):
+    data = {"username": "u", "email": "e", "password": "password"}
+    mock_repo.get_by_username_or_email.return_value = None
+    mock_repo.commit.side_effect = Exception("DB Error")
+    
+    with pytest.raises(Exception, match="DB Error"):
+        auth_service.register(data)
+
+def test_db_commit_failure_during_logout(auth_service, mock_repo):
+    user_id = "1"
+    refresh_token = auth_service._create_token({"sub": user_id, "type": "refresh"}, 86400)
+    mock_repo.get_by_id.return_value = MagicMock()
+    mock_repo.commit.side_effect = Exception("DB Error")
+    
+    with pytest.raises(Exception, match="DB Error"):
+        auth_service.logout({"refresh_token": refresh_token})
+
+def test_db_commit_failure_during_role_update(auth_service, mock_repo):
+    admin_token = auth_service._create_token({"sub": "2", "type": "access"}, 900)
+    auth_header = f"Bearer {admin_token}"
+    
+    admin_user = MagicMock()
+    admin_user.to_dict.return_value = {"id": 2, "roles": ["admin"]}
+    target_user = MagicMock()
+    target_user.roles = ["user"]
+    
+    def side_effect(user_id):
+        if str(user_id) == "2": return admin_user
+        return target_user
+    mock_repo.get_by_id.side_effect = side_effect
+    mock_repo.commit.side_effect = Exception("DB Error")
+    
+    with pytest.raises(Exception, match="DB Error"):
+        auth_service.update_user_role(1, {"role": "admin"}, auth_header)
+
+def test_db_commit_failure_during_status_update(auth_service, mock_repo):
+    admin_token = auth_service._create_token({"sub": "2", "type": "access"}, 900)
+    auth_header = f"Bearer {admin_token}"
+    
+    admin_user = MagicMock()
+    admin_user.to_dict.return_value = {"id": 2, "roles": ["admin"]}
+    target_user = MagicMock()
+    
+    def side_effect(user_id):
+        if str(user_id) == "2": return admin_user
+        return target_user
+    mock_repo.get_by_id.side_effect = side_effect
+    mock_repo.commit.side_effect = Exception("DB Error")
+    
+    with pytest.raises(Exception, match="DB Error"):
+        auth_service.update_user_status(1, {"status": "banned"}, auth_header)
+
+def test_decode_token_expired(auth_service):
+    # Create an already expired token by passing a negative expiration
+    expired_token = auth_service._create_token({"sub": "1"}, -10)
+    
+    with pytest.raises(AuthenticationError, match="Token expirado."):
+        auth_service._decode_token(expired_token)
+
+def test_decode_token_invalid(auth_service):
+    with pytest.raises(AuthenticationError, match="Token inválido"):
+        auth_service._decode_token("invalid.token.here")
+
+def test_get_current_user_invalid_header(auth_service):
+    with pytest.raises(AuthenticationError, match="Authorization header inválido."):
+        auth_service.get_current_user("NotBearer token")
+    with pytest.raises(AuthenticationError, match="Authorization header inválido."):
+        auth_service.get_current_user("")

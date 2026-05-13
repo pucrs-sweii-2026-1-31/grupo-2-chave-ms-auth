@@ -260,21 +260,3 @@ class AuthService:
         except jwt.InvalidTokenError as e:
             logger.warning(f"Invalid token: {str(e)}")
             raise AuthenticationError(f"Token inválido")
-
-    def _create_token(self, payload, expires_in):
-        now = datetime.datetime.utcnow()
-        payload.update({
-            "exp": now + datetime.timedelta(seconds=expires_in),
-            "iat": now,
-        })
-        return jwt.encode(payload, self.secret_key, algorithm="HS256")
-
-    def _decode_token(self, token):
-        try:
-            return jwt.decode(token, self.secret_key, algorithms=["HS256"])
-        except jwt.ExpiredSignatureError:
-            logger.warning("Token expired")
-            raise AuthenticationError("Token expirado.")
-        except jwt.InvalidTokenError as e:
-            logger.warning(f"Invalid token: {str(e)}")
-            raise AuthenticationError(f"Token inválido")
