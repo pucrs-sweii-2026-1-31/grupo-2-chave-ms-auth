@@ -92,12 +92,20 @@ class AuthService:
         username = data.get("username", "").strip()
         email = data.get("email", "").strip()
         password = data.get("password", "").strip()
+        role = data.get("role", "").strip().lower()
 
         if not username or not email or not password:
             raise ValueError("Username, email e senha são obrigatórios.")
 
         if len(password) < 6:
             raise ValueError("Senha deve ter pelo menos 6 caracteres.")
+
+        if not role:
+            role = "aluno"
+
+        valid_roles = ["aluno", "professor", "admin"]
+        if role not in valid_roles:
+            raise ValueError(f"Role inválido. Valores permitidos: {', '.join(valid_roles)}")
 
         # Step 2: Check if user already exists
         existing_user = self.user_repository.get_by_username_or_email(username, email)
@@ -113,7 +121,7 @@ class AuthService:
             username=username,
             email=email,
             password_hash=password_hash,
-            roles=[]
+            roles=[role]
         )
         try:
             self.user_repository.commit()
