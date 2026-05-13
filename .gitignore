@@ -2,13 +2,13 @@
 node_modules/
 
 # Python environment
+venv/
 .venv/
 
 # Environment
 .env
 
-# Logs
-*.log
-npm-debug.log*
+# Tests and Cache
+.pytest_cache/
 __pycache__/
 *.pyc
