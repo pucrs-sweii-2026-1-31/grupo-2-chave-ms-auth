@@ -268,4 +268,4 @@ class AuthService:
             raise AuthenticationError("Token expirado.")
         except jwt.InvalidTokenError as e:
             logger.warning(f"Invalid token: {str(e)}")
-            raise AuthenticationError(f"Token inválido: {str(e)}")
+            raise AuthenticationError(f"Token inválido")
