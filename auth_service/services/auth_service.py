@@ -81,6 +81,7 @@ class AuthService:
         token = auth_header.split(" ", 1)[1]
         payload = self._decode_token(token)
         if payload.get("type") != "access":
+            logger.error(f"Invalid token type during authentication: {str(payload)}", exc_info=True)
             raise AuthenticationError("Token inválido.")
 
         user = User.query.get(payload.get("sub"))
